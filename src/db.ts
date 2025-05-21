@@ -1,6 +1,6 @@
-import {EntityManager, EntityRepository, MikroORM, Options} from "@mikro-orm/postgresql";
-import {User} from "./entities/User";
-import config from './mikro-orm.config'
+import { EntityManager, EntityRepository, MikroORM, Options } from "@mikro-orm/mongodb"; // Change to mongodb
+import { User } from "./entities/User";
+import config from './mikro-orm.config';
 
 export interface Services {
   orm: MikroORM;
@@ -10,16 +10,17 @@ export interface Services {
 
 let dataSource: Services;
 
-// Initialize the ORM then return the data source this will use data source as a cache so call multiple times will not reinitialize the ORM
+// Initialize the ORM then return the data source, this will use data source as a cache so calling multiple times will not reinitialize the ORM
 export async function initORM(options?: Options): Promise<Services> {
   if (dataSource) return dataSource;
-  // allow overriding config options for testing
+
+  // Allow overriding config options for testing
   const orm = await MikroORM.init({
     ...config,
     ...options,
   });
 
-  // save to cache before returning
+  // Save to cache before returning
   dataSource = {
     orm,
     em: orm.em,

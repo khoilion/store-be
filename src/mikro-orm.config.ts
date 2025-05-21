@@ -1,7 +1,8 @@
-import {defineConfig, PostgreSqlDriver} from '@mikro-orm/postgresql';
+import { defineConfig } from '@mikro-orm/core'; // Use core
+import { MongoDriver } from '@mikro-orm/mongodb'; // Use MongoDriver
 
 export default defineConfig({
-  driver: PostgreSqlDriver,
+  driver: MongoDriver, // Change to MongoDriver
   entities: ['src/entities'],
-  clientUrl: process.env.DATABASE_URL,
+  clientUrl: process.env.DATABASE_URL, // Ensure this is your MongoDB URI
 });

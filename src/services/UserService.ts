@@ -32,11 +32,11 @@ export class UserService {
       throw new Error("Invalid password")
     }
     //generate token
-    const token = jwt.sign({id: Number(user.id), role: user.role}, process.env.JWT_SECRET ?? "")
+    const token = jwt.sign({id: Number(user._id), role: user.role}, process.env.JWT_SECRET ?? "")
 
     return {
       user: {
-        id: Number(user.id),
+        id: Number(user._id),
         username: user.username,
         role: user.role
       },

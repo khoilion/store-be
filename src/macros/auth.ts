@@ -16,11 +16,11 @@ const authMacro = new Elysia()
           }
           const jwtToken = token.split(" ")[1]
           const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET ?? "") as {
-            id: number,
+            _id: number,
             role: string
           }
           const user = {
-            id: decoded.id,
+            id: decoded._id,
             role: decoded.role
           }
           if (!roles.includes(user.role)) {
