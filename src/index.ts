@@ -1,25 +1,26 @@
-import {Elysia} from "elysia";
-import {initORM} from "./db";
-import {RequestContext} from "@mikro-orm/core";
+import { Elysia } from "elysia";
+import { initORM } from "./db";
+import { RequestContext } from "@mikro-orm/core";
 import responseMiddleware from "./middlewares/responseMiddleware";
 import errorMiddleware from "./middlewares/errorMiddleware";
 import userController from "./controllers/user.controller";
-import {swagger} from '@elysiajs/swagger'
-import {cors} from '@elysiajs/cors'
-import {opentelemetry} from '@elysiajs/opentelemetry'
-import {BatchSpanProcessor} from '@opentelemetry/sdk-trace-node'
-import {OTLPTraceExporter} from '@opentelemetry/exporter-trace-otlp-proto'
+import categoryController from "./controllers/categoryProduct.controller"; // Import your category controller
+import { swagger } from '@elysiajs/swagger';
+import { cors } from '@elysiajs/cors';
+import { opentelemetry } from '@elysiajs/opentelemetry';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 
 const startApp = async () => {
   try {
-    const dataSource = await initORM()
-    //sync entities classes to database
+    const dataSource = await initORM();
+    // Sync entities classes to database
     await dataSource.orm.getSchemaGenerator().updateSchema();
+
     const app = new Elysia()
-      .use(cors())
-      .get("/", () => "It's works!")
-      .use(swagger(
-        {
+        .use(cors())
+        .get("/", () => "It's works!")
+        .use(swagger({
           path: '/swagger-ui',
           provider: 'swagger-ui',
           documentation: {
@@ -42,25 +43,23 @@ const startApp = async () => {
           swaggerOptions: {
             persistAuthorization: true,
           }
-        }
-      ))
-      .use(opentelemetry())
-      .onBeforeHandle(() => RequestContext.enter(dataSource.em))
-      .onAfterHandle(responseMiddleware)
-      .onError(errorMiddleware)
-      .group("/api", group =>
-        group.use(userController)
-      )
-      .listen(3000);
+        }))
+        .use(opentelemetry())
+        .onBeforeHandle(() => RequestContext.enter(dataSource.em))
+        .onAfterHandle(responseMiddleware)
+        .onError(errorMiddleware)
+        .group("/api", group =>
+            group
+                .use(userController)
+                .use(categoryController) // Add category controller here
+        )
+        .listen(3000);
 
-    console.log(
-      `🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}`
-    );
-    console.log(
-      `🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}/swagger-ui`
-    );
+    console.log(`🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}`);
+    console.log(`🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}/swagger-ui`);
   } catch (err) {
-    console.error(err)
+    console.error(err);
   }
-}
-startApp().then()
+};
+
+startApp().then();
