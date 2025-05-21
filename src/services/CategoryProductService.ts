@@ -35,6 +35,15 @@ export class CategoryProductService {
         const db = await initORM();
         return await db.em.find(CategoryProduct, {}); // Use `em.find`
     }
+
+    async getCategoryById(id: string) {
+        const db = await initORM();
+        const category = await db.em.findOne(CategoryProduct, { _id: id });
+        if (!category) {
+            throw new Error("Category not found");
+        }
+        return category;
+    }
 }
 
 export default new CategoryProductService();
