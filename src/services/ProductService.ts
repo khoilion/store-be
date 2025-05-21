@@ -1,15 +1,11 @@
-// src/services/ProductService.ts
 import { initORM } from "../db";
 import { Product } from "../entities/Product";
 import { CategoryProduct } from "../entities/CategoryProduct";
 import { ProductStatus } from "../enums/ProductStatus.enum";
 import { EntityManager, Loaded, wrap } from "@mikro-orm/core";
 import path from 'path';
-import fs from 'fs'; // fs/promises for async operations if preferred
+import fs from 'fs';
 
-// --- Helper function to save uploaded files ---
-// Đảm bảo thư mục này tồn tại và có quyền ghi.
-// Trong production, nên dùng dịch vụ lưu trữ cloud (S3, Firebase Storage, etc.)
 const UPLOAD_DIR_PRODUCTS = path.join(process.cwd(), 'public', 'uploads', 'products');
 if (!fs.existsSync(UPLOAD_DIR_PRODUCTS)) {
     fs.mkdirSync(UPLOAD_DIR_PRODUCTS, { recursive: true });
@@ -21,16 +17,13 @@ async function saveUploadedFile(file: File | Blob, productName: string): Promise
     }
     const originalFileName = (file instanceof File) ? file.name : 'uploaded_image';
     const extension = path.extname(originalFileName);
-    // Tạo tên file duy nhất để tránh ghi đè
     const uniqueFileName = `${productName.replace(/\s+/g, '_')}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}${extension}`;
     const filePath = path.join(UPLOAD_DIR_PRODUCTS, uniqueFileName);
 
-    await Bun.write(filePath, file); // Bun.write can handle Blob
+    await Bun.write(filePath, file);
 
-    return `/uploads/products/${uniqueFileName}`; // Trả về đường dẫn URL tương đối
+    return `/uploads/products/${uniqueFileName}`;
 }
-// --- End Helper ---
-
 
 export interface AddProductData {
     name: string;
@@ -40,15 +33,15 @@ export interface AddProductData {
     discount?: number;
     quantity: number;
     categoryProductId: string;
-    images?: (File | Blob)[]; // Mảng các File objects từ Elysia
+    images?: (File | Blob)[];
 }
 
 export interface UpdateProductData {
     name?: string;
     status?: ProductStatus;
-    description?: string | null; // Cho phép xóa description
+    description?: string | null;
     price?: number;
-    discount?: number | null; // Cho phép xóa discount
+    discount?: number | null;
     quantity?: number;
     categoryProductId?: string;
     images?: (File | Blob)[]; // Ảnh mới để tải lên (sẽ thay thế toàn bộ ảnh cũ)

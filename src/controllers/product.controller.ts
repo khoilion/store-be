@@ -1,17 +1,13 @@
-// src/controllers/product.controller.ts
 import { Elysia, t } from "elysia";
-import ProductService from "../services/ProductService"; // Đường dẫn đúng
-// Sửa đường dẫn import ProductStatus nếu cần
-import { ProductStatus } from "../enums/ProductStatus.enum"; // Đảm bảo đường dẫn này đúng
+import ProductService from "../services/ProductService";
+import { ProductStatus } from "../enums/ProductStatus.enum";
 
-// Helper xử lý lỗi không tìm thấy
 const handleServiceError = (error: any, set: Elysia.Set) => {
     if (error instanceof Error) {
         if (error.message.includes("not found")) {
             set.status = 404;
             return { message: error.message };
         }
-        // Có thể thêm các lỗi nghiệp vụ khác ở đây
     }
     set.status = 500;
     console.error("Product API Error:", error);
@@ -65,7 +61,7 @@ const productController = new Elysia({ prefix: "/products" })
     .decorate('ProductService', ProductService)
     .post(
         "/",
-        async ({ body, set, ProductService: service }) => { // Đổi tên để tránh nhầm lẫn nếu cần
+        async ({ body, set, ProductService: service }) => {
             try {
                 const productData = {
                     name: body.name,
@@ -75,9 +71,9 @@ const productController = new Elysia({ prefix: "/products" })
                     discount: body.discount,
                     quantity: body.quantity,
                     categoryProductId: body.categoryProductId,
-                    images: body.images // body.images sẽ là Array<File | Blob> hoặc undefined
+                    images: body.images
                 };
-                const product = await service.addProduct(productData as any); // Type assertion cần cẩn thận
+                const product = await service.addProduct(productData as any);
                 set.status = 201;
                 return product;
             } catch (error: any) {
@@ -86,13 +82,10 @@ const productController = new Elysia({ prefix: "/products" })
         },
         {
             body: AddProductBodySchema,
-            type: 'multipart/form-data', // << --- THÊM DÒNG NÀY ---
+            type: 'multipart/form-data',
             detail: {
                 tags: ['Product'],
                 summary: 'Thêm sản phẩm mới (hỗ trợ tải nhiều ảnh)',
-                // `consumes` thường được suy ra từ `type: 'multipart/form-data'`
-                // nhưng để chắc chắn, bạn có thể giữ lại nếu phiên bản Swagger của bạn cần
-                // consumes: ['multipart/form-data'],
             }
         }
     )
@@ -156,11 +149,10 @@ const productController = new Elysia({ prefix: "/products" })
         {
             params: ProductIdParamsSchema,
             body: UpdateProductBodySchema,
-            type: 'multipart/form-data', // << --- THÊM DÒNG NÀY ---
+            type: 'multipart/form-data',
             detail: {
                 tags: ['Product'],
                 summary: 'Cập nhật sản phẩm (hỗ trợ tải ảnh mới)',
-                // consumes: ['multipart/form-data'],
             }
         }
     )

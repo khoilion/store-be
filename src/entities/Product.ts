@@ -1,5 +1,4 @@
-// src/entities/Product.ts
-import { Entity, Property, ManyToOne, Enum, Cascade, Loaded } from "@mikro-orm/core"; // Bỏ Rel, có thể cần Loaded
+import { Entity, Property, ManyToOne, Enum } from "@mikro-orm/core";
 import { BaseEntity } from "./BaseEntity";
 import { v4 as uuidv4 } from 'uuid';
 import { CategoryProduct } from "./CategoryProduct";
@@ -28,13 +27,8 @@ export class Product extends BaseEntity {
     @Property({ type: 'json', nullable: true })
     images?: string[];
 
-    // THAY ĐỔI Ở ĐÂY:
-    // Sử dụng trực tiếp kiểu của Entity, không cần Rel.
-    // MikroORM sẽ tự hiểu đây là một quan hệ.
-    // Bạn có thể sử dụng `Loaded<CategoryProduct>` nếu muốn rõ ràng hơn về việc nó có thể được load
-    // hoặc `CategoryProduct` nếu bạn thường xuyên truy cập nó sau khi đã populate.
     @ManyToOne(() => CategoryProduct, { onDelete: 'cascade' })
-    category!: CategoryProduct; // Hoặc Loaded<CategoryProduct>
+    category!: CategoryProduct;
 
     constructor() {
         super();
