@@ -1,35 +1,34 @@
 import {Elysia} from "elysia";
 import jwt from "jsonwebtoken";
-/*
-* Starting from Elysia 1.2.10, each property in the macro object can be a function or an object.
-* If the property is an object, it will be translated to a function that accept a boolean parameter,
-* and will be executed if the parameter is true.
-*/
+import {initORM} from "../db";
+
 const authMacro = new Elysia()
-  .macro({
-    checkAuth(roles: string[]) {
-      return {
-        resolve({headers, error}) {
-          const token = headers.authorization
-          if (!token) {
-            throw new Error('Token not found')
-          }
-          const jwtToken = token.split(" ")[1]
-          const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET ?? "") as {
-            _id: number,
-            role: string
-          }
-          const user = {
-            id: decoded._id,
-            role: decoded.role
-          }
-          if (!roles.includes(user.role)) {
-            throw new Error('Permission denied')
-          }
-          return {user}
-        }
-      }
-    },
-  })
+    .macro({
+        checkAuth(roles: string[]) {
+            return {
+                async resolve({headers, error}) {
+                    const token = headers.authorization;
+                    if (!token) {
+                        throw new Error('Token not found');
+                    }
+
+                    const jwtToken = token.split(" ")[1];
+                    const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET ?? "") as {
+                        _id: string, // Ensure this matches your User entity
+                        role: string
+                    };
+                    const db = await initORM(); // Initialize ORM
+                    const user = await db.user.findOne({_id: decoded._id});
+                    if (!user) {
+                        throw new Error('User not found');
+                    }
+                    if (!roles.includes(user.role)) {
+                        throw new Error('Permission denied');
+                    }
+                    return {user};
+                }
+            };
+        },
+    });
 
 export default authMacro;
