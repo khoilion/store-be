@@ -10,6 +10,7 @@ import { cors } from '@elysiajs/cors';
 import { opentelemetry } from '@elysiajs/opentelemetry';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import productController from "./controllers/product.controller";
 
 const startApp = async () => {
   try {
@@ -51,7 +52,8 @@ const startApp = async () => {
         .group("/api", group =>
             group
                 .use(userController)
-                .use(categoryController) // Add category controller here
+                .use(categoryController)
+                .use(productController)
         )
         .listen(3000);
 
