@@ -27,7 +27,7 @@ export class Product extends BaseEntity {
     @Property({ type: 'json', nullable: true })
     images?: string[];
 
-    @ManyToOne(() => CategoryProduct, { onDelete: 'cascade' })
+    @ManyToOne(() => CategoryProduct)
     category!: CategoryProduct;
 
     constructor() {

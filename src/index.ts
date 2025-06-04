@@ -4,18 +4,15 @@ import { RequestContext } from "@mikro-orm/core";
 import responseMiddleware from "./middlewares/responseMiddleware";
 import errorMiddleware from "./middlewares/errorMiddleware";
 import userController from "./controllers/user.controller";
-import categoryController from "./controllers/categoryProduct.controller"; // Import your category controller
+import categoryController from "./controllers/categoryProduct.controller";
 import { swagger } from '@elysiajs/swagger';
 import { cors } from '@elysiajs/cors';
 import { opentelemetry } from '@elysiajs/opentelemetry';
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import productController from "./controllers/product.controller";
 
 const startApp = async () => {
   try {
     const dataSource = await initORM();
-    // Sync entities classes to database
     await dataSource.orm.getSchemaGenerator().updateSchema();
 
     const app = new Elysia()

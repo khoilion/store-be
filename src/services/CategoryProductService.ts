@@ -1,17 +1,17 @@
-import { initORM } from "../db"; // Initialize your ORM
+import { initORM } from "../db";
 import { CategoryProduct } from "../entities/CategoryProduct";
 
 export class CategoryProductService {
     async addCategory(name: string, description?: string) {
         const db = await initORM();
-        const category = db.em.create(CategoryProduct, { name, description }); // Use `em.create`
+        const category = db.em.create(CategoryProduct, { name, description });
         await db.em.persistAndFlush(category);
         return category;
     }
 
     async updateCategory(id: string, name: string, description?: string) {
         const db = await initORM();
-        const category = await db.em.findOne(CategoryProduct, { _id: id }); // Use `em.findOne`
+        const category = await db.em.findOne(CategoryProduct, { _id: id });
         if (!category) {
             throw new Error("Category not found");
         }
@@ -23,7 +23,7 @@ export class CategoryProductService {
 
     async deleteCategory(id: string) {
         const db = await initORM();
-        const category = await db.em.findOne(CategoryProduct, { _id: id }); // Use `em.findOne`
+        const category = await db.em.findOne(CategoryProduct, { _id: id });
         if (!category) {
             throw new Error("Category not found");
         }
@@ -33,7 +33,7 @@ export class CategoryProductService {
 
     async getCategories() {
         const db = await initORM();
-        return await db.em.find(CategoryProduct, {}); // Use `em.find`
+        return await db.em.find(CategoryProduct, {});
     }
 
     async getCategoryById(id: string) {

@@ -138,7 +138,7 @@ const productController = new Elysia({ prefix: "/products" })
                     discount: body.discount,
                     quantity: body.quantity,
                     categoryProductId: body.categoryProductId,
-                    images: body.images // body.images sẽ là Array<File | Blob> hoặc undefined
+                    images: body.images
                 };
                 const product = await service.updateProduct(params.id, updateData as any);
                 return product;

@@ -6,7 +6,7 @@ const authMacro = new Elysia()
     .macro({
         checkAuth(roles: string[]) {
             return {
-                async resolve({headers, error}) {
+                async resolve({headers}) {
                     const token = headers.authorization;
                     if (!token) {
                         throw new Error('Token not found');

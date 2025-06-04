@@ -1,8 +1,6 @@
 const errorMiddleware = ({code, error, set}: any) => {
-  //https://elysiajs.com/patterns/error-handling.html
   console.log(error)
   if (code === "UNKNOWN") {
-    //user throw error
     set.status = 400;
     return {
       message: error.message,

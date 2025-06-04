@@ -52,7 +52,7 @@ export interface UpdateProductData {
 export class ProductService {
     private async getEntityManager(): Promise<EntityManager> {
         const db = await initORM();
-        return db.em.fork(); // Quan trọng: Sử dụng fork() để có EntityManager riêng cho mỗi request
+        return db.em.fork();
     }
 
     async addProduct(data: AddProductData): Promise<Product> {
@@ -74,7 +74,7 @@ export class ProductService {
 
         const product = em.create(Product, {
             ...data,
-            category: category, // Gán category entity đã load
+            category: category,
             images: imageUrls,
         });
 
@@ -94,7 +94,7 @@ export class ProductService {
             queryFilters.status = filters.status;
         }
         if (filters.name) {
-            queryFilters.name = { $like: `%${filters.name}%` }; // Tìm kiếm gần đúng
+            queryFilters.name = { $like: `%${filters.name}%` };
         }
 
         return await em.find(Product, queryFilters, findOptions);
@@ -132,7 +132,6 @@ export class ProductService {
             product.images = newImageUrls;
         }
 
-        // Cập nhật category nếu được cung cấp
         if (data.categoryProductId && data.categoryProductId !== product.category?._id) {
             const newCategory = await em.findOne(CategoryProduct, { _id: data.categoryProductId });
             if (!newCategory) {
@@ -141,7 +140,6 @@ export class ProductService {
             product.category = newCategory;
         }
 
-        // Cập nhật các trường khác
         wrap(product).assign({
             name: data.name ?? product.name,
             status: data.status ?? product.status,
@@ -149,7 +147,6 @@ export class ProductService {
             quantity: data.quantity ?? product.quantity,
         });
 
-        // Cho phép set description/discount thành null để xóa
         if (data.hasOwnProperty('description')) {
             product.description = data.description ?? undefined;
         }
