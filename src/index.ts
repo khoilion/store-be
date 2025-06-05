@@ -9,6 +9,7 @@ import { swagger } from '@elysiajs/swagger';
 import { cors } from '@elysiajs/cors';
 import { opentelemetry } from '@elysiajs/opentelemetry';
 import productController from "./controllers/product.controller";
+import uploadController from "./controllers/upload.controller";
 
 const startApp = async () => {
   try {
@@ -51,6 +52,7 @@ const startApp = async () => {
                 .use(userController)
                 .use(categoryController)
                 .use(productController)
+                .use(uploadController)
         )
         .listen(3000);
 
