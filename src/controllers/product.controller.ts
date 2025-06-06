@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import ProductService from "../services/ProductService";
 import { ProductStatus } from "../enums/ProductStatus.enum";
 
+// @ts-ignore
 const handleServiceError = (error: any, set: Elysia.Set) => {
     if (error instanceof Error) {
         if (error.message.includes("not found")) {
@@ -14,7 +15,7 @@ const handleServiceError = (error: any, set: Elysia.Set) => {
     return { message: "An internal server error occurred." };
 };
 
-// Schemas cho validation (DTOs)
+// --- THAY ĐỔI 1: Cập nhật Schema để nhận chuỗi URL thay vì file ---
 const AddProductBodySchema = t.Object({
     name: t.String({ minLength: 1, error: "Tên sản phẩm không được để trống" }),
     status: t.Enum(ProductStatus, { error: "Trạng thái không hợp lệ" }),
@@ -23,17 +24,10 @@ const AddProductBodySchema = t.Object({
     discount: t.Optional(t.Number({ minimum: 0 })),
     quantity: t.Integer({ minimum: 0, error: "Số lượng phải là số nguyên không âm" }),
     categoryProductId: t.String({ format: 'uuid', error: "ID danh mục không hợp lệ" }),
-    images: t.Optional(
-        t.Files({ // Cho phép nhiều file
-            // Bỏ các constraints nếu không cần thiết cho việc test ban đầu
-            // Hoặc đảm bảo chúng không quá chặt chẽ gây lỗi khi test
-            // Ví dụ:
-            // minItems: 0, // Cho phép không có file nào
-            // maxItems: 5, // Tối đa 5 file
-            // type: ['image/jpeg', 'image/png', 'image/webp'],
-            // maxSize: '5m' // Kích thước tối đa 5MB mỗi file
-        })
-    )
+    // Nhận một chuỗi chứa các URL, cách nhau bằng dấu phẩy
+    images: t.Optional(t.String({
+        description: 'Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,)'
+    }))
 });
 
 const UpdateProductBodySchema = t.Object({
@@ -44,7 +38,10 @@ const UpdateProductBodySchema = t.Object({
     discount: t.Optional(t.Union([t.Number({ minimum: 0 }), t.Null()])),
     quantity: t.Optional(t.Integer({ minimum: 0 })),
     categoryProductId: t.Optional(t.String({ format: 'uuid' })),
-    images: t.Optional(t.Files())
+    // Tương tự, nhận chuỗi URL
+    images: t.Optional(t.String({
+        description: 'Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,). Gửi chuỗi rỗng để xóa hết ảnh.'
+    }))
 });
 
 const ProductIdParamsSchema = t.Object({
@@ -58,120 +55,104 @@ const GetProductsQuerySchema = t.Object({
 });
 
 const productController = new Elysia({ prefix: "/products" })
-    .decorate('ProductService', ProductService)
-    .post(
-        "/",
-        async ({ body, set, ProductService: service }) => {
-            try {
-                const productData = {
-                    name: body.name,
-                    status: body.status,
-                    description: body.description,
-                    price: body.price,
-                    discount: body.discount,
-                    quantity: body.quantity,
-                    categoryProductId: body.categoryProductId,
-                    images: body.images
-                };
-                const product = await service.addProduct(productData as any);
-                set.status = 201;
-                return product;
-            } catch (error: any) {
-                return handleServiceError(error, set);
-            }
-        },
-        {
-            body: AddProductBodySchema,
-            type: 'multipart/form-data',
-            detail: {
-                tags: ['Product'],
-                summary: 'Thêm sản phẩm mới (hỗ trợ tải nhiều ảnh)',
-            }
+  .decorate('ProductService', ProductService)
+  .post(
+    "/",
+    async ({ body, set, ProductService: service }) => {
+        try {
+            // Dữ liệu body đã đúng định dạng, chỉ cần truyền xuống service
+            const product = await service.addProduct(body as any);
+            set.status = 201;
+            return product;
+        } catch (error: any) {
+            return handleServiceError(error, set);
         }
-    )
-    .get(
-        "/",
-        async ({ query, ProductService: service }) => {
-            try {
-                return await service.getProducts(query);
-            } catch (error: any) {
-                console.error("Error fetching products:", error);
-                set.status = 500;
-                return { message: "Failed to fetch products" };
-            }
-        },
-        {
-            query: GetProductsQuerySchema,
-            detail: {
-                tags: ['Product'],
-                summary: 'Lấy danh sách sản phẩm (có thể lọc)'
-            }
+    },
+    {
+        body: AddProductBodySchema,
+        // --- THAY ĐỔI 2: Bỏ 'multipart/form-data', giờ đây là 'application/json' (mặc định) ---
+        // type: 'multipart/form-data',
+        detail: {
+            tags: ['Product'],
+            summary: 'Thêm sản phẩm mới',
         }
-    )
-    .get(
-        "/:id",
-        async ({ params, set, ProductService: service }) => {
-            try {
-                const product = await service.getProductById(params.id);
-                return product;
-            } catch (error: any) {
-                return handleServiceError(error, set);
-            }
-        },
-        {
-            params: ProductIdParamsSchema,
-            detail: {
-                tags: ['Product'],
-                summary: 'Lấy thông tin sản phẩm theo ID'
-            }
+    }
+  )
+  .get(
+    "/",
+    async ({ query, set, ProductService: service }) => {
+        try {
+            return await service.getProducts(query);
+        } catch (error: any) {
+            console.error("Error fetching products:", error);
+            set.status = 500; // Thêm set vào đây
+            return { message: "Failed to fetch products" };
         }
-    )
-    .put(
-        "/:id",
-        async ({ params, body, set, ProductService: service }) => {
-            try {
-                const updateData = {
-                    name: body.name,
-                    status: body.status,
-                    description: body.description,
-                    price: body.price,
-                    discount: body.discount,
-                    quantity: body.quantity,
-                    categoryProductId: body.categoryProductId,
-                    images: body.images
-                };
-                const product = await service.updateProduct(params.id, updateData as any);
-                return product;
-            } catch (error: any) {
-                return handleServiceError(error, set);
-            }
-        },
-        {
-            params: ProductIdParamsSchema,
-            body: UpdateProductBodySchema,
-            type: 'multipart/form-data',
-            detail: {
-                tags: ['Product'],
-                summary: 'Cập nhật sản phẩm (hỗ trợ tải ảnh mới)',
-            }
+    },
+    {
+        query: GetProductsQuerySchema,
+        detail: {
+            tags: ['Product'],
+            summary: 'Lấy danh sách sản phẩm (có thể lọc)'
         }
-    )
-    .delete(
-        "/:id",
-        async ({ params, set, ProductService: service }) => {
-            try {
-                return await service.deleteProduct(params.id);
-            } catch (error: any) {
-                return handleServiceError(error, set);
-            }
-        },
-        {
-            params: ProductIdParamsSchema,
-            detail: {
-                tags: ['Product'],
-                summary: 'Xóa sản phẩm theo ID'
-            }
+    }
+  )
+  .get(
+    "/:id",
+    async ({ params, set, ProductService: service }) => {
+        try {
+            const product = await service.getProductById(params.id);
+            return product;
+        } catch (error: any) {
+            return handleServiceError(error, set);
         }
-    );
+    },
+    {
+        params: ProductIdParamsSchema,
+        detail: {
+            tags: ['Product'],
+            summary: 'Lấy thông tin sản phẩm theo ID'
+        }
+    }
+  )
+  .put(
+    "/:id",
+    async ({ params, body, set, ProductService: service }) => {
+        try {
+            // Dữ liệu body đã đúng định dạng, chỉ cần truyền xuống service
+            const product = await service.updateProduct(params.id, body as any);
+            return product;
+        } catch (error: any) {
+            return handleServiceError(error, set);
+        }
+    },
+    {
+        params: ProductIdParamsSchema,
+        body: UpdateProductBodySchema,
+        // --- THAY ĐỔI 3: Bỏ 'multipart/form-data' ---
+        // type: 'multipart/form-data',
+        detail: {
+            tags: ['Product'],
+            summary: 'Cập nhật sản phẩm',
+        }
+    }
+  )
+  .delete(
+    "/:id",
+    async ({ params, set, ProductService: service }) => {
+        try {
+            return await service.deleteProduct(params.id);
+        } catch (error: any) {
+            return handleServiceError(error, set);
+        }
+    },
+    {
+        params: ProductIdParamsSchema,
+        detail: {
+            tags: ['Product'],
+            summary: 'Xóa sản phẩm theo ID'
+        }
+    }
+  );
 
 export default productController;

@@ -1,30 +1,12 @@
+// src/services/ProductService.ts
+
 import { initORM } from "../db";
 import { Product } from "../entities/Product";
 import { CategoryProduct } from "../entities/CategoryProduct";
 import { ProductStatus } from "../enums/ProductStatus.enum";
 import { EntityManager, Loaded, wrap } from "@mikro-orm/core";
-import path from 'path';
-import fs from 'fs';
 
-const UPLOAD_DIR_PRODUCTS = path.join(process.cwd(), 'public', 'uploads', 'products');
-if (!fs.existsSync(UPLOAD_DIR_PRODUCTS)) {
-    fs.mkdirSync(UPLOAD_DIR_PRODUCTS, { recursive: true });
-}
-
-async function saveUploadedFile(file: File | Blob, productName: string): Promise<string> {
-    if (!(file instanceof Blob)) {
-        throw new Error("Invalid file object received for saving.");
-    }
-    const originalFileName = (file instanceof File) ? file.name : 'uploaded_image';
-    const extension = path.extname(originalFileName);
-    const uniqueFileName = `${productName.replace(/\s+/g, '_')}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}${extension}`;
-    const filePath = path.join(UPLOAD_DIR_PRODUCTS, uniqueFileName);
-
-    await Bun.write(filePath, file);
-
-    return `/uploads/products/${uniqueFileName}`;
-}
-
+// Interface để định nghĩa dữ liệu khi thêm sản phẩm
 export interface AddProductData {
     name: string;
     status: ProductStatus;
@@ -33,9 +15,10 @@ export interface AddProductData {
     discount?: number;
     quantity: number;
     categoryProductId: string;
-    images?: (File | Blob)[];
+    images?: string; // Chuỗi các URL, cách nhau bằng dấu phẩy
 }
 
+// Interface để định nghĩa dữ liệu khi cập nhật sản phẩm
 export interface UpdateProductData {
     name?: string;
     status?: ProductStatus;
@@ -44,9 +27,7 @@ export interface UpdateProductData {
     discount?: number | null;
     quantity?: number;
     categoryProductId?: string;
-    images?: (File | Blob)[]; // Ảnh mới để tải lên (sẽ thay thế toàn bộ ảnh cũ)
-    // Để quản lý ảnh phức tạp hơn (giữ lại một số, xóa một số), cần DTO phức tạp hơn.
-    // Ví dụ: `imagesToDelete?: string[]`, `existingImageUrlsToKeep?: string[]`
+    images?: string; // Chuỗi các URL, cách nhau bằng dấu phẩy
 }
 
 export class ProductService {
@@ -62,20 +43,15 @@ export class ProductService {
             throw new Error("Category not found");
         }
 
-        const imageUrls: string[] = [];
-        if (data.images && data.images.length > 0) {
-            for (const imageFile of data.images) {
-                if (imageFile instanceof Blob) {
-                    const imageUrl = await saveUploadedFile(imageFile, data.name);
-                    imageUrls.push(imageUrl);
-                }
-            }
-        }
+        // Xử lý chuỗi URL hình ảnh thành một mảng
+        const imageUrls = data.images
+          ? data.images.split(',').map(url => url.trim()).filter(url => url.length > 0)
+          : [];
 
         const product = em.create(Product, {
             ...data,
             category: category,
-            images: imageUrls,
+            images: imageUrls, // Lưu mảng URL vào entity
         });
 
         await em.persistAndFlush(product);
@@ -117,19 +93,13 @@ export class ProductService {
             throw new Error("Product not found");
         }
 
-        // Xử lý cập nhật ảnh: Đơn giản là thay thế toàn bộ ảnh cũ nếu có ảnh mới
-        if (data.images && data.images.length > 0) {
-            // (Tùy chọn) Xóa file ảnh cũ khỏi server tại đây
-            // product.images?.forEach(oldImageUrl => { try { fs.unlinkSync(path.join(process.cwd(), 'public', oldImageUrl)); } catch (e) { console.warn(`Failed to delete old image: ${oldImageUrl}`, e); }});
-
-            const newImageUrls: string[] = [];
-            for (const imageFile of data.images) {
-                if (imageFile instanceof Blob) {
-                    const imageUrl = await saveUploadedFile(imageFile, data.name || product.name);
-                    newImageUrls.push(imageUrl);
-                }
-            }
-            product.images = newImageUrls;
+        // Cập nhật logic xử lý ảnh:
+        // Nếu trường 'images' được cung cấp (kể cả chuỗi rỗng), thì cập nhật.
+        // Nếu không (undefined), giữ nguyên ảnh cũ.
+        if (data.hasOwnProperty('images') && typeof data.images === 'string') {
+            product.images = data.images
+              ? data.images.split(',').map(url => url.trim()).filter(url => url.length > 0)
+              : []; // Nếu gửi chuỗi rỗng, mảng ảnh sẽ rỗng -> xóa hết ảnh.
         }
 
         if (data.categoryProductId && data.categoryProductId !== product.category?._id) {
@@ -140,6 +110,7 @@ export class ProductService {
             product.category = newCategory;
         }
 
+        // Gán các trường còn lại
         wrap(product).assign({
             name: data.name ?? product.name,
             status: data.status ?? product.status,
@@ -165,12 +136,11 @@ export class ProductService {
             throw new Error("Product not found");
         }
 
-        // (Tùy chọn) Xóa file ảnh liên quan khỏi server
-        // product.images?.forEach(imageUrl => { try { fs.unlinkSync(path.join(process.cwd(), 'public', imageUrl)); } catch (e) { console.warn(`Failed to delete image: ${imageUrl}`, e); }});
-
+        // Việc dọn dẹp file trên Minio nên được xử lý bằng một cơ chế riêng nếu cần.
         await em.removeAndFlush(product);
         return { message: "Product deleted successfully" };
     }
 }
 
+// Export một instance của service để sử dụng (Singleton pattern)
 export default new ProductService();
