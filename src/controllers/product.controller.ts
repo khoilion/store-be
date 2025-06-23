@@ -38,7 +38,6 @@ const UpdateProductBodySchema = t.Object({
     discount: t.Optional(t.Union([t.Number({ minimum: 0 }), t.Null()])),
     quantity: t.Optional(t.Integer({ minimum: 0 })),
     categoryProductId: t.Optional(t.String({ format: 'uuid' })),
-    // Tương tự, nhận chuỗi URL
     images: t.Optional(t.String({
         description: 'Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,). Gửi chuỗi rỗng để xóa hết ảnh.'
     }))
@@ -60,7 +59,6 @@ const productController = new Elysia({ prefix: "/products" })
     "/",
     async ({ body, set, ProductService: service }) => {
         try {
-            // Dữ liệu body đã đúng định dạng, chỉ cần truyền xuống service
             const product = await service.addProduct(body as any);
             set.status = 201;
             return product;
@@ -70,11 +68,12 @@ const productController = new Elysia({ prefix: "/products" })
     },
     {
         body: AddProductBodySchema,
-        // --- THAY ĐỔI 2: Bỏ 'multipart/form-data', giờ đây là 'application/json' (mặc định) ---
-        // type: 'multipart/form-data',
         detail: {
             tags: ['Product'],
             summary: 'Thêm sản phẩm mới',
+            security: [
+                {JwtAuth: []}
+            ],
         }
     }
   )
@@ -85,7 +84,7 @@ const productController = new Elysia({ prefix: "/products" })
             return await service.getProducts(query);
         } catch (error: any) {
             console.error("Error fetching products:", error);
-            set.status = 500; // Thêm set vào đây
+            set.status = 500;
             return { message: "Failed to fetch products" };
         }
     },
@@ -119,7 +118,6 @@ const productController = new Elysia({ prefix: "/products" })
     "/:id",
     async ({ params, body, set, ProductService: service }) => {
         try {
-            // Dữ liệu body đã đúng định dạng, chỉ cần truyền xuống service
             const product = await service.updateProduct(params.id, body as any);
             return product;
         } catch (error: any) {
@@ -129,11 +127,12 @@ const productController = new Elysia({ prefix: "/products" })
     {
         params: ProductIdParamsSchema,
         body: UpdateProductBodySchema,
-        // --- THAY ĐỔI 3: Bỏ 'multipart/form-data' ---
-        // type: 'multipart/form-data',
         detail: {
             tags: ['Product'],
             summary: 'Cập nhật sản phẩm',
+            security: [
+                {JwtAuth: []}
+            ],
         }
     }
   )
@@ -150,7 +149,10 @@ const productController = new Elysia({ prefix: "/products" })
         params: ProductIdParamsSchema,
         detail: {
             tags: ['Product'],
-            summary: 'Xóa sản phẩm theo ID'
+            summary: 'Xóa sản phẩm theo ID',
+            security: [
+                {JwtAuth: []}
+            ],
         }
     }
   );
