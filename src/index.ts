@@ -10,6 +10,7 @@ import { cors } from '@elysiajs/cors';
 import { opentelemetry } from '@elysiajs/opentelemetry';
 import productController from "./controllers/product.controller";
 import uploadController from "./controllers/upload.controller";
+import cartController from "./controllers/cart.controller";
 
 const startApp = async () => {
   try {
@@ -53,6 +54,7 @@ const startApp = async () => {
                 .use(categoryController)
                 .use(productController)
                 .use(uploadController)
+                .use(cartController)
         )
         .listen(3000);
 

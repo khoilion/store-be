@@ -1,12 +1,9 @@
-// src/services/ProductService.ts
-
 import { initORM } from "../db";
 import { Product } from "../entities/Product";
 import { CategoryProduct } from "../entities/CategoryProduct";
 import { ProductStatus } from "../enums/ProductStatus.enum";
 import { EntityManager, Loaded, wrap } from "@mikro-orm/core";
 
-// Interface để định nghĩa dữ liệu khi thêm sản phẩm
 export interface AddProductData {
     name: string;
     status: ProductStatus;
@@ -15,10 +12,9 @@ export interface AddProductData {
     discount?: number;
     quantity: number;
     categoryProductId: string;
-    images?: string; // Chuỗi các URL, cách nhau bằng dấu phẩy
+    images?: string;
 }
 
-// Interface để định nghĩa dữ liệu khi cập nhật sản phẩm
 export interface UpdateProductData {
     name?: string;
     status?: ProductStatus;
@@ -27,7 +23,7 @@ export interface UpdateProductData {
     discount?: number | null;
     quantity?: number;
     categoryProductId?: string;
-    images?: string; // Chuỗi các URL, cách nhau bằng dấu phẩy
+    images?: string;
 }
 
 export class ProductService {
@@ -72,6 +68,8 @@ export class ProductService {
         if (filters.name) {
             queryFilters.name = { $like: `%${filters.name}%` };
         }
+
+
 
         return await em.find(Product, queryFilters, findOptions);
     }
@@ -142,5 +140,4 @@ export class ProductService {
     }
 }
 
-// Export một instance của service để sử dụng (Singleton pattern)
 export default new ProductService();
