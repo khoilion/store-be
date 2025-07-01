@@ -85,8 +85,8 @@ export class ProductService {
         const em = await this.getEntityManager()
 
         // Set default values
-        const page = filters.page || 1
-        const limit = filters.limit || 10
+        const page = filters.page || 0
+        const limit = filters.limit || 0
         const sortBy = filters.sortBy || "newest"
 
         // Build query filters

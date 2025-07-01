@@ -76,9 +76,9 @@ const GetProductsQuerySchema = t.Object({
     ),
 
     // Pagination
-    page: t.Optional(t.Integer({minimum: 1, default: 1, description: "Số trang (bắt đầu từ 1)"})),
+    page: t.Optional(t.Integer({minimum: 0, default: 0, description: "Số trang (bắt đầu từ 1)"})),
     limit: t.Optional(
-        t.Integer({minimum: 1, maximum: 100, default: 10, description: "Số lượng sản phẩm mỗi trang (tối đa 100)"}),
+        t.Integer({minimum: 0, maximum: 100, default: 0, description: "Số lượng sản phẩm mỗi trang (tối đa 100)"}),
     ),
 })
 
