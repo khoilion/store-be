@@ -2,6 +2,64 @@ import {Elysia, t} from "elysia"
 import ProductService from "../services/ProductService"
 import {ProductStatus} from "../enums/ProductStatus.enum"
 
+const SpecificationsSchema = t.Object({
+    screen: t.Optional(t.Object({
+        displayTechnology: t.Optional(t.String()),
+        resolution: t.Optional(t.String()),
+        widescreen: t.Optional(t.String()),
+    })),
+    camera: t.Optional(t.Object({
+        rear: t.Optional(t.Object({
+            resolution: t.Optional(t.String()),
+            film: t.Optional(t.String()),
+            flash: t.Optional(t.String()),
+            advancedPhotography: t.Optional(t.String()),
+        })),
+        front: t.Optional(t.Object({
+            resolution: t.Optional(t.String()),
+            videocall: t.Optional(t.String()),
+            otherInformation: t.Optional(t.String()),
+        })),
+    })),
+    cpu: t.Optional(t.Object({
+        operatingSystem: t.Optional(t.String()),
+        chipset: t.Optional(t.String()),
+        cpu_speed: t.Optional(t.String()),
+        gpu: t.Optional(t.String()),
+    })),
+    memory: t.Optional(t.Object({
+        ram: t.Optional(t.String()),
+        storage: t.Optional(t.Array(t.String())),
+        externalMemoryCard: t.Optional(t.String()),
+    })),
+    connect: t.Optional(t.Object({
+        mobileNetwork: t.Optional(t.String()),
+        sim: t.Optional(t.String()),
+        wifi: t.Optional(t.String()),
+        gps: t.Optional(t.String()),
+        bluetooth: t.Optional(t.String()),
+        connectionPort: t.Optional(t.String()),
+        otherConnections: t.Optional(t.String()),
+    })),
+    designWeight: t.Optional(t.Object({
+        design: t.Optional(t.String()),
+        material: t.Optional(t.String()),
+        size: t.Optional(t.String()),
+        weight: t.Optional(t.String()),
+    })),
+    batteryInformationCharging: t.Optional(t.Object({
+        batteryCapacity: t.Optional(t.String()),
+        batteryType: t.Optional(t.String()),
+        batteryTechnology: t.Optional(t.String()),
+    })),
+    utilities: t.Optional(t.Object({
+        advancedSecurity: t.Optional(t.String()),
+        specialFeatures: t.Optional(t.String()),
+        musicPlayer: t.Optional(t.String()),
+        moviePlayer: t.Optional(t.String()),
+    }))
+}, { description: "Thông số kỹ thuật chi tiết của sản phẩm" });
+
 // @ts-ignore
 const handleServiceError = (error: any, set: Elysia.Set) => {
     if (error instanceof Error) {
@@ -28,7 +86,9 @@ const AddProductBodySchema = t.Object({
             description: "Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,)",
         }),
     ),
+    specifications: t.Optional(SpecificationsSchema) // Thêm specifications vào schema
 })
+
 
 const UpdateProductBodySchema = t.Object({
     name: t.Optional(t.String({minLength: 1})),
@@ -43,6 +103,7 @@ const UpdateProductBodySchema = t.Object({
             description: "Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,). Gửi chuỗi rỗng để xóa hết ảnh.",
         }),
     ),
+    specifications: t.Optional(t.Union([SpecificationsSchema, t.Null()])) // Thêm specifications vào schema
 })
 
 const ProductIdParamsSchema = t.Object({
@@ -90,7 +151,23 @@ const productController = new Elysia({prefix: "/products"})
             try {
                 const product = await service.addProduct(body as any)
                 set.status = 201
-                return product
+
+                // --- BẮT ĐẦU BIẾN ĐỔI RESPONSE ---
+                // Tách các trường cần nhóm ra khỏi đối tượng product
+                const { images, specifications, ...restOfProduct } = product;
+
+                // Tạo đối tượng response mới với cấu trúc mong muốn
+                const response = {
+                    ...restOfProduct,
+                    media: {
+                        images: images || [],
+                    },
+                    specifications: specifications || {},
+                };
+
+                return response;
+                // --- KẾT THÚC BIẾN ĐỔI RESPONSE ---
+
             } catch (error: any) {
                 return handleServiceError(error, set)
             }

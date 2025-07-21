@@ -1,5 +1,5 @@
 import {initORM} from "../db"
-import {Product} from "../entities/Product"
+import {Product, ProductSpecifications} from "../entities/Product"
 import {CategoryProduct} from "../entities/CategoryProduct"
 import type {ProductStatus} from "../enums/ProductStatus.enum"
 import {type EntityManager, type Loaded, wrap} from "@mikro-orm/core"
@@ -13,6 +13,7 @@ export interface AddProductData {
     quantity: number
     categoryProductId: string
     images?: string
+    specifications?: ProductSpecifications
 }
 
 export interface UpdateProductData {
@@ -24,6 +25,7 @@ export interface UpdateProductData {
     quantity?: number
     categoryProductId?: string
     images?: string
+    specifications?: ProductSpecifications | null
 }
 
 export interface GetProductsFilters {
@@ -229,6 +231,10 @@ export class ProductService {
         }
         if (data.hasOwnProperty("discount")) {
             product.discount = data.discount ?? undefined
+        }
+        // Thêm logic để cập nhật specifications
+        if (data.hasOwnProperty("specifications")) {
+            product.specifications = data.specifications ?? undefined;
         }
 
         await em.persistAndFlush(product)
