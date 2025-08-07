@@ -1,42 +1,42 @@
+// @ts-nocheck
 import {initORM} from "../db"
-import {Product, ProductSpecifications} from "../entities/Product"
+import {Product, ProductSpecifications, ProductVariantDetail} from "../entities/Product"
 import {CategoryProduct} from "../entities/CategoryProduct"
 import type {ProductStatus} from "../enums/ProductStatus.enum"
 import {type EntityManager, type Loaded, wrap} from "@mikro-orm/core"
 
+// *** INTERFACE ĐẦU VÀO CHO VIỆC THÊM SẢN PHẨM ***
 export interface AddProductData {
     name: string
     status: ProductStatus
     description?: string
-    price: number
-    discount?: number
-    quantity: number
     categoryProductId: string
     images?: string
     specifications?: ProductSpecifications
+    discount?: number // <-- THÊM DÒNG NÀY
+    variants: ProductVariantDetail[]
 }
 
+// *** INTERFACE ĐẦU VÀO CHO VIỆC CẬP NHẬT SẢN PHẨM ***
 export interface UpdateProductData {
     name?: string
     status?: ProductStatus
     description?: string | null
-    price?: number
-    discount?: number | null
-    quantity?: number
     categoryProductId?: string
     images?: string
     specifications?: ProductSpecifications | null
+    discount?: number | null // <-- THÊM DÒNG NÀY
+    variants?: ProductVariantDetail[] | null
 }
 
+// *** INTERFACE CHO VIỆC LỌC SẢN PHẨM ***
 export interface GetProductsFilters {
     categoryId?: string
     status?: ProductStatus
     name?: string
-    hasDiscount?: boolean
-    minDiscount?: number
     minPrice?: number
     maxPrice?: number
-    sortBy?: "price_asc" | "price_desc" | "name_asc" | "name_desc" | "newest" | "oldest"
+    sortBy?: "name_asc" | "name_desc" | "newest" | "oldest" // Loại bỏ sortBy price
     page?: number
     limit?: number
 }
@@ -73,10 +73,16 @@ export class ProductService {
                 .filter((url) => url.length > 0)
             : []
 
+        // *** TẠO SẢN PHẨM VỚI DỮ LIỆU MỚI ***
         const product = em.create(Product, {
-            ...data,
+            name: data.name,
+            status: data.status,
+            description: data.description,
+            discount: data.discount, // <-- THÊM DÒNG NÀY
+            specifications: data.specifications,
             category: category,
             images: imageUrls,
+            variants: data.variants
         })
 
         await em.persistAndFlush(product)
@@ -86,62 +92,30 @@ export class ProductService {
     async getProducts(filters: GetProductsFilters = {}): Promise<PaginatedProductsResponse> {
         const em = await this.getEntityManager()
 
-        // Set default values
-        const page = filters.page || 0
-        const limit = filters.limit || 0
+        const page = filters.page || 1
+        const limit = filters.limit || 10
         const sortBy = filters.sortBy || "newest"
 
-        // Build query filters
         const queryFilters: any = {}
 
         if (filters.categoryId) {
             queryFilters.category = filters.categoryId
         }
-
         if (filters.status) {
             queryFilters.status = filters.status
         }
-
         if (filters.name) {
             queryFilters.name = {$like: `%${filters.name}%`}
         }
 
-        // Filter by discount
-        if (filters.hasDiscount !== undefined) {
-            if (filters.hasDiscount) {
-                queryFilters.discount = {$gt: 0}
-            } else {
-                queryFilters.$or = [{discount: {$eq: null}}, {discount: {$eq: 0}}]
-            }
+        if (filters.minPrice || filters.maxPrice) {
+            console.warn("Lọc theo giá không được hỗ trợ khi giá được lưu trong trường JSON.");
         }
 
-        if (filters.minDiscount !== undefined) {
-            queryFilters.discount = {
-                ...queryFilters.discount,
-                $gte: filters.minDiscount,
-            }
-        }
 
-        // Filter by price range
-        if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-            queryFilters.price = {}
-            if (filters.minPrice !== undefined) {
-                queryFilters.price.$gte = filters.minPrice
-            }
-            if (filters.maxPrice !== undefined) {
-                queryFilters.price.$lte = filters.maxPrice
-            }
-        }
-
-        // Build sort options
         const orderBy: any = {}
         switch (sortBy) {
-            case "price_asc":
-                orderBy.price = "ASC"
-                break
-            case "price_desc":
-                orderBy.price = "DESC"
-                break
+            // *** LOẠI BỎ SẮP XẾP THEO GIÁ ***
             case "name_asc":
                 orderBy.name = "ASC"
                 break
@@ -157,20 +131,16 @@ export class ProductService {
                 break
         }
 
-        // Calculate offset
         const offset = (page - 1) * limit
 
-        // Get total count for pagination
-        const totalItems = await em.count(Product, queryFilters)
-        const totalPages = Math.ceil(totalItems / limit)
-
-        // Get products with pagination
-        const products = await em.find(Product, queryFilters, {
+        const [products, totalItems] = await em.findAndCount(Product, queryFilters, {
             populate: ["category"],
             orderBy,
             limit,
             offset,
         })
+
+        const totalPages = Math.ceil(totalItems / limit)
 
         return {
             data: products,
@@ -222,19 +192,19 @@ export class ProductService {
         wrap(product).assign({
             name: data.name ?? product.name,
             status: data.status ?? product.status,
-            price: data.price ?? product.price,
-            quantity: data.quantity ?? product.quantity,
         })
 
         if (data.hasOwnProperty("description")) {
             product.description = data.description ?? undefined
         }
-        if (data.hasOwnProperty("discount")) {
+        if (data.hasOwnProperty("discount")) { // <-- THÊM KHỐI LỆNH NÀY
             product.discount = data.discount ?? undefined
         }
-        // Thêm logic để cập nhật specifications
         if (data.hasOwnProperty("specifications")) {
             product.specifications = data.specifications ?? undefined;
+        }
+        if (data.hasOwnProperty("variants")) {
+            product.variants = data.variants ?? [];
         }
 
         await em.persistAndFlush(product)

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {Elysia, t} from "elysia"
 import ProductService from "../services/ProductService"
 import {ProductStatus} from "../enums/ProductStatus.enum"
@@ -58,9 +59,15 @@ const SpecificationsSchema = t.Object({
         musicPlayer: t.Optional(t.String()),
         moviePlayer: t.Optional(t.String()),
     }))
-}, { description: "Thông số kỹ thuật chi tiết của sản phẩm" });
+}, {description: "Thông số kỹ thuật chi tiết của sản phẩm"});
 
-// @ts-ignore
+// *** SCHEMA CHO MỘT CHI TIẾT BIẾN THỂ (DUNG LƯỢNG/GIÁ) ***
+const VariantDetailSchema = t.Object({
+    storage: t.String({minLength: 1, error: "Dung lượng không được để trống"}),
+    price: t.Number({minimum: 0, error: "Giá phải là số không âm"}),
+    quantity: t.Integer({minimum: 0, error: "Số lượng phải là số nguyên không âm"}),
+});
+
 const handleServiceError = (error: any, set: Elysia.Set) => {
     if (error instanceof Error) {
         if (error.message.includes("not found")) {
@@ -73,73 +80,68 @@ const handleServiceError = (error: any, set: Elysia.Set) => {
     return {message: "An internal server error occurred."}
 }
 
+// *** CẬP NHẬT SCHEMA CHO VIỆC THÊM SẢN PHẨM ***
 const AddProductBodySchema = t.Object({
     name: t.String({minLength: 1, error: "Tên sản phẩm không được để trống"}),
     status: t.Enum(ProductStatus, {error: "Trạng thái không hợp lệ"}),
     description: t.Optional(t.String()),
-    price: t.Number({minimum: 0, error: "Giá phải là số không âm"}),
     discount: t.Optional(t.Number({minimum: 0})),
-    quantity: t.Integer({minimum: 0, error: "Số lượng phải là số nguyên không âm"}),
     categoryProductId: t.String({format: "uuid", error: "ID danh mục không hợp lệ"}),
     images: t.Optional(
         t.String({
-            description: "Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,)",
+            description: "Chuỗi các URL hình ảnh chung, cách nhau bằng dấu phẩy (,)",
         }),
     ),
-    specifications: t.Optional(SpecificationsSchema) // Thêm specifications vào schema
+    specifications: t.Optional(SpecificationsSchema),
+    variants: t.Array(VariantDetailSchema, {
+        minItems: 1,
+        error: "Sản phẩm phải có ít nhất một tùy chọn giá và dung lượng."
+    })
 })
-
 
 const UpdateProductBodySchema = t.Object({
     name: t.Optional(t.String({minLength: 1})),
     status: t.Optional(t.Enum(ProductStatus)),
-    description: t.Optional(t.Union([t.String(), t.Null()])),
-    price: t.Optional(t.Number({minimum: 0})),
+    // Thêm trường discount ở cấp cao nhất
     discount: t.Optional(t.Union([t.Number({minimum: 0}), t.Null()])),
-    quantity: t.Optional(t.Integer({minimum: 0})),
+    description: t.Optional(t.Union([t.String(), t.Null()])),
     categoryProductId: t.Optional(t.String({format: "uuid"})),
     images: t.Optional(
         t.String({
             description: "Chuỗi các URL hình ảnh, cách nhau bằng dấu phẩy (,). Gửi chuỗi rỗng để xóa hết ảnh.",
         }),
     ),
-    specifications: t.Optional(t.Union([SpecificationsSchema, t.Null()])) // Thêm specifications vào schema
+    specifications: t.Optional(t.Union([SpecificationsSchema, t.Null()])),
+    variants: t.Optional(t.Union([t.Array(VariantDetailSchema), t.Null()]))
 })
 
 const ProductIdParamsSchema = t.Object({
     id: t.String({format: "uuid", error: "ID sản phẩm không hợp lệ"}),
 })
 
-// Cập nhật schema cho query parameters
+// *** CẬP NHẬT SCHEMA CHO QUERY PARAMETERS ***
 const GetProductsQuerySchema = t.Object({
-    // Filters
     categoryId: t.Optional(t.String({format: "uuid"})),
     status: t.Optional(t.Enum(ProductStatus)),
     name: t.Optional(t.String()),
-    hasDiscount: t.Optional(t.Boolean({description: "Lọc sản phẩm có giảm giá"})),
-    minDiscount: t.Optional(t.Number({minimum: 0, description: "Giảm giá tối thiểu (%)"})),
-    minPrice: t.Optional(t.Number({minimum: 0, description: "Giá tối thiểu"})),
-    maxPrice: t.Optional(t.Number({minimum: 0, description: "Giá tối đa"})),
+    minPrice: t.Optional(t.Number({minimum: 0, description: "Giá tối thiểu (không được hỗ trợ)"})),
+    maxPrice: t.Optional(t.Number({minimum: 0, description: "Giá tối đa (không được hỗ trợ)"})),
 
-    // Sorting
     sortBy: t.Optional(
         t.Union(
             [
-                t.Literal("price_asc"),
-                t.Literal("price_desc"),
                 t.Literal("name_asc"),
                 t.Literal("name_desc"),
                 t.Literal("newest"),
                 t.Literal("oldest"),
             ],
-            {description: "Sắp xếp theo: price_asc, price_desc, name_asc, name_desc, newest, oldest"},
+            {description: "Sắp xếp theo: name_asc, name_desc, newest, oldest"},
         ),
     ),
 
-    // Pagination
-    page: t.Optional(t.Integer({minimum: 0, default: 0, description: "Số trang (bắt đầu từ 1)"})),
+    page: t.Optional(t.Integer({minimum: 1, default: 1, description: "Số trang (bắt đầu từ 1)"})),
     limit: t.Optional(
-        t.Integer({minimum: 0, maximum: 100, default: 0, description: "Số lượng sản phẩm mỗi trang (tối đa 100)"}),
+        t.Integer({minimum: 1, maximum: 100, default: 10, description: "Số lượng sản phẩm mỗi trang (tối đa 100)"}),
     ),
 })
 
@@ -151,23 +153,7 @@ const productController = new Elysia({prefix: "/products"})
             try {
                 const product = await service.addProduct(body as any)
                 set.status = 201
-
-                // --- BẮT ĐẦU BIẾN ĐỔI RESPONSE ---
-                // Tách các trường cần nhóm ra khỏi đối tượng product
-                const { images, specifications, ...restOfProduct } = product;
-
-                // Tạo đối tượng response mới với cấu trúc mong muốn
-                const response = {
-                    ...restOfProduct,
-                    media: {
-                        images: images || [],
-                    },
-                    specifications: specifications || {},
-                };
-
-                return response;
-                // --- KẾT THÚC BIẾN ĐỔI RESPONSE ---
-
+                return product
             } catch (error: any) {
                 return handleServiceError(error, set)
             }
@@ -176,7 +162,7 @@ const productController = new Elysia({prefix: "/products"})
             body: AddProductBodySchema,
             detail: {
                 tags: ["Product"],
-                summary: "Thêm sản phẩm mới",
+                summary: "Thêm sản phẩm mới với các tùy chọn giá",
                 security: [{JwtAuth: []}],
             },
         },
@@ -198,13 +184,6 @@ const productController = new Elysia({prefix: "/products"})
             detail: {
                 tags: ["Product"],
                 summary: "Lấy danh sách sản phẩm với lọc, sắp xếp và phân trang",
-                description: `
-                                Lấy danh sách sản phẩm với các tùy chọn:
-                                - Lọc theo danh mục, trạng thái, tên, giá, giảm giá
-                                - Sắp xếp theo giá (thấp->cao, cao->thấp), tên (A-Z, Z-A), thời gian tạo
-                                - Phân trang với page và limit
-                                - Mặc định hiển thị sản phẩm mới nhất trước
-                               `,
             },
         },
     )

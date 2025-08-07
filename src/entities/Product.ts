@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { CategoryProduct } from "./CategoryProduct";
 import { ProductStatus } from "../enums/ProductStatus.enum";
 
-// Cập nhật interface ProductSpecifications với cấu trúc mới chi tiết hơn
 export interface ProductSpecifications {
     screen?: {
         displayTechnology?: string;
@@ -63,6 +62,11 @@ export interface ProductSpecifications {
     }
 }
 
+export interface ProductVariantDetail {
+    storage: string;
+    price: number;
+    quantity: number;
+}
 
 @Entity()
 export class Product extends BaseEntity {
@@ -72,31 +76,29 @@ export class Product extends BaseEntity {
     @Enum(() => ProductStatus)
     status!: ProductStatus;
 
-    @Property({ type: 'text', nullable: true })
-    description?: string;
-
-    @Property({ type: 'decimal', precision: 12, scale: 2 })
-    price!: number;
-
-    @Property({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+    @Property({ type: 'decimal', precision: 12, scale: 2, nullable: true })
     discount?: number;
 
-    @Property({ type: 'integer' })
-    quantity!: number;
+    @Property({ type: 'text', nullable: true })
+    description?: string;
 
     @Property({ type: 'json', nullable: true })
     images?: string[];
 
-    // Trường specifications giờ sẽ sử dụng interface mới
     @Property({ type: 'json', nullable: true })
     specifications?: ProductSpecifications;
 
     @ManyToOne(() => CategoryProduct)
     category!: CategoryProduct;
 
+    // *** THÊM TRƯỜNG MỚI ĐỂ LƯU CÁC BIẾN THỂ ***
+    @Property({ type: 'json' })
+    variants: ProductVariantDetail[] = [];
+
     constructor() {
         super();
         this._id = uuidv4();
         this.images = [];
+        this.variants = [];
     }
 }
