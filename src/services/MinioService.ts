@@ -1,38 +1,36 @@
-import {Client} from "minio";
+import Elysia from 'elysia';
+import * as Minio from 'minio'
 
-class MinioService {
-  private readonly minioClient: Client
-  private readonly expiry = 60 * 60 * 24 * 7 // 7 days
-  private static instance: MinioService;
+export class MinioService {
+    private minioClient: Minio.Client;
+    private static instance: MinioService;
 
-  constructor() {
-    this.minioClient = new Client({
-      endPoint: "khoi-upload.fcstoys.cloud",
-      port: 80,
-      useSSL: false,
-      accessKey: "BW8tkr3nfzLFZgfX0M1K",
-      secretKey: "MDzKfeyRpWZc0e33DUByP6cJMXRBohgshlz7izNp"
-    });
-  }
-
-  public static getInstance() {
-    if (!MinioService.instance) {
-      MinioService.instance = new MinioService();
+    constructor() {
+        this.minioClient = new Minio.Client({
+            endPoint: process.env.MINIO_ENDPOINT!,
+            useSSL: true,
+            accessKey: process.env.MINIO_ACCESS_KEY,
+            secretKey: process.env.MINIO_SECRET_KEY,
+        });
     }
-    return MinioService.instance;
-  }
 
-  public async getPreSignedUrl(objectName: string) {
-    return new Promise((resolve, reject) => {
-      this.minioClient.presignedPutObject("store", objectName, this.expiry, function (e, preSignedUrl) {
-        if (e) {
-          console.log(e)
-          reject(e)
+    public static getInstance(): MinioService {
+        if (!MinioService.instance) {
+            MinioService.instance = new MinioService();
         }
-        resolve(preSignedUrl.replace("http://", "https://"));
-      })
-    })
-  }
+        return MinioService.instance;
+    }
+
+    public async getPresignedUrl(fileName: string, expiry: number = 24 * 60 * 60) {
+        const objectName = fileName.replace(/\s/g, '_');
+        const bucketName = process.env.MINIO_BUCKET_NAME || 'khoilion';
+        const presignedUrl = await this.minioClient.presignedPutObject(bucketName, objectName, expiry);
+        const fileUrl = `https://${process.env.MINIO_ENDPOINT || 's3.ducbinh203.tech'}/${bucketName}/${objectName}`;
+        return {
+            imageUrl: fileUrl,
+            url: presignedUrl,
+        }
+    }
 }
 
-export default MinioService
+export default new Elysia().decorate('minioService', MinioService.getInstance());

@@ -5,7 +5,7 @@ import { User } from './entities/User';
 import { Product } from './entities/Product';
 import {Cart} from "./entities/Cart";
 import {CartItem} from "./entities/CartItem";
-
+console.log("process.env.DATABASE_URL", process.env.DATABASE_URL)
 export default defineConfig({
   driver: MongoDriver,
   entities: [CategoryProduct, User, Product, Cart, CartItem],
