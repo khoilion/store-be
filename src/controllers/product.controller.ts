@@ -87,17 +87,12 @@ const AddProductBodySchema = t.Object({
     description: t.Optional(t.String()),
     discount: t.Optional(t.Number({minimum: 0})),
     categoryProductId: t.String({format: "uuid", error: "ID danh mục không hợp lệ"}),
-    images: t.Optional(
-        t.String({
-            description: "Chuỗi các URL hình ảnh chung, cách nhau bằng dấu phẩy (,)",
-        }),
-    ),
+    images: t.String({
+        description: "Chuỗi các URL hình ảnh chung, cách nhau bằng dấu phẩy (,)",
+    }),
     specifications: t.Optional(SpecificationsSchema),
-    variants: t.Array(VariantDetailSchema, {
-        minItems: 1,
-        error: "Sản phẩm phải có ít nhất một tùy chọn giá và dung lượng."
-    })
-})
+    variants: t.Optional(t.Array(VariantDetailSchema))
+});
 
 const UpdateProductBodySchema = t.Object({
     name: t.Optional(t.String({minLength: 1})),
