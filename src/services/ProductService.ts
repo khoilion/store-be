@@ -1,9 +1,9 @@
 // @ts-nocheck
-import {initORM} from "../db"
-import {Product, ProductSpecifications, ProductVariantDetail} from "../entities/Product"
-import {CategoryProduct} from "../entities/CategoryProduct"
-import type {ProductStatus} from "../enums/ProductStatus.enum"
-import {type EntityManager, type Loaded, wrap} from "@mikro-orm/core"
+import { initORM } from "../db"
+import { Product, ProductVariantDetail } from "../entities/Product"
+import { CategoryProduct } from "../entities/CategoryProduct"
+import type { ProductStatus } from "../enums/ProductStatus.enum"
+import { type EntityManager, type Loaded, wrap } from "@mikro-orm/core"
 
 // *** INTERFACE ĐẦU VÀO CHO VIỆC THÊM SẢN PHẨM ***
 export interface AddProductData {
@@ -12,8 +12,8 @@ export interface AddProductData {
     description?: string
     categoryProductId: string
     images?: string
-    specifications?: ProductSpecifications
-    discount?: number // <-- THÊM DÒNG NÀY
+    specifications?: string // *** THAY ĐỔI: giờ là string (HTML/rich text) ***
+    discount?: number
     variants: ProductVariantDetail[]
 }
 
@@ -24,8 +24,8 @@ export interface UpdateProductData {
     description?: string | null
     categoryProductId?: string
     images?: string
-    specifications?: ProductSpecifications | null
-    discount?: number | null // <-- THÊM DÒNG NÀY
+    specifications?: string | null // *** THAY ĐỔI: giờ là string (HTML/rich text) ***
+    discount?: number | null
     variants?: ProductVariantDetail[] | null
 }
 
@@ -36,7 +36,7 @@ export interface GetProductsFilters {
     name?: string
     minPrice?: number
     maxPrice?: number
-    sortBy?: "name_asc" | "name_desc" | "newest" | "oldest" // Loại bỏ sortBy price
+    sortBy?: "name_asc" | "name_desc" | "newest" | "oldest"
     page?: number
     limit?: number
 }
@@ -61,25 +61,21 @@ export class ProductService {
 
     async addProduct(data: AddProductData): Promise<Product> {
         const em = await this.getEntityManager()
-        const category = await em.findOne(CategoryProduct, {_id: data.categoryProductId})
+        const category = await em.findOne(CategoryProduct, { _id: data.categoryProductId })
         if (!category) {
             throw new Error("Category not found")
         }
 
         const imageUrls = data.images
-            ? data.images
-                .split(",")
-                .map((url) => url.trim())
-                .filter((url) => url.length > 0)
+            ? data.images.split(",").map((url) => url.trim()).filter((url) => url.length > 0)
             : []
 
-        // *** TẠO SẢN PHẨM VỚI DỮ LIỆU MỚI ***
         const product = em.create(Product, {
             name: data.name,
             status: data.status,
             description: data.description,
-            discount: data.discount, // <-- THÊM DÒNG NÀY
-            specifications: data.specifications,
+            discount: data.discount,
+            specifications: data.specifications, // *** Giờ là string HTML ***
             category: category,
             images: imageUrls,
             variants: data.variants
@@ -105,17 +101,15 @@ export class ProductService {
             queryFilters.status = filters.status
         }
         if (filters.name) {
-            queryFilters.name = {$like: `%${filters.name}%`}
+            queryFilters.name = { $like: `%${filters.name}%` }
         }
 
         if (filters.minPrice || filters.maxPrice) {
-            console.warn("Lọc theo giá không được hỗ trợ khi giá được lưu trong trường JSON.");
+            console.warn("Lọc theo giá không được hỗ trợ khi giá được lưu trong trường JSON.")
         }
-
 
         const orderBy: any = {}
         switch (sortBy) {
-            // *** LOẠI BỎ SẮP XẾP THEO GIÁ ***
             case "name_asc":
                 orderBy.name = "ASC"
                 break
@@ -157,7 +151,7 @@ export class ProductService {
 
     async getProductById(id: string): Promise<Loaded<Product, "category"> | null> {
         const em = await this.getEntityManager()
-        const product = await em.findOne(Product, {_id: id}, {populate: ["category"]})
+        const product = await em.findOne(Product, { _id: id }, { populate: ["category"] })
         if (!product) {
             throw new Error("Product not found")
         }
@@ -166,7 +160,7 @@ export class ProductService {
 
     async updateProduct(id: string, data: UpdateProductData): Promise<Product> {
         const em = await this.getEntityManager()
-        const product = await em.findOne(Product, {_id: id}, {populate: ["category"]})
+        const product = await em.findOne(Product, { _id: id }, { populate: ["category"] })
 
         if (!product) {
             throw new Error("Product not found")
@@ -174,15 +168,12 @@ export class ProductService {
 
         if (data.hasOwnProperty("images") && typeof data.images === "string") {
             product.images = data.images
-                ? data.images
-                    .split(",")
-                    .map((url) => url.trim())
-                    .filter((url) => url.length > 0)
+                ? data.images.split(",").map((url) => url.trim()).filter((url) => url.length > 0)
                 : []
         }
 
         if (data.categoryProductId && data.categoryProductId !== product.category?._id) {
-            const newCategory = await em.findOne(CategoryProduct, {_id: data.categoryProductId})
+            const newCategory = await em.findOne(CategoryProduct, { _id: data.categoryProductId })
             if (!newCategory) {
                 throw new Error("New category not found")
             }
@@ -197,14 +188,15 @@ export class ProductService {
         if (data.hasOwnProperty("description")) {
             product.description = data.description ?? undefined
         }
-        if (data.hasOwnProperty("discount")) { // <-- THÊM KHỐI LỆNH NÀY
+        if (data.hasOwnProperty("discount")) {
             product.discount = data.discount ?? undefined
         }
         if (data.hasOwnProperty("specifications")) {
-            product.specifications = data.specifications ?? undefined;
+            // *** THAY ĐỔI: Giờ chỉ là string đơn giản ***
+            product.specifications = data.specifications ?? undefined
         }
         if (data.hasOwnProperty("variants")) {
-            product.variants = data.variants ?? [];
+            product.variants = data.variants ?? []
         }
 
         await em.persistAndFlush(product)
@@ -213,13 +205,13 @@ export class ProductService {
 
     async deleteProduct(id: string): Promise<{ message: string }> {
         const em = await this.getEntityManager()
-        const product = await em.findOne(Product, {_id: id})
+        const product = await em.findOne(Product, { _id: id })
         if (!product) {
             throw new Error("Product not found")
         }
 
         await em.removeAndFlush(product)
-        return {message: "Product deleted successfully"}
+        return { message: "Product deleted successfully" }
     }
 }
 
